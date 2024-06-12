@@ -12,11 +12,6 @@ import org.springframework.context.annotation.Profile;
 
 import fund.infrastructure.hibernate.HibernateSchema;
 
-
-/**
- * @author a.polcaro
- *
- */
 @Profile("dev")
 @Configuration
 class DbConfig {

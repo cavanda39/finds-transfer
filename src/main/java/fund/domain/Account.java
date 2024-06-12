@@ -1,4 +1,4 @@
-package fund.model;
+package fund.domain;
 
 import javax.persistence.Entity;
 
