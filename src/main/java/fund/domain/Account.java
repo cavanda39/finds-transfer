@@ -2,13 +2,18 @@ package fund.domain;
 
 import java.math.BigDecimal;
 import java.util.Date;
-import java.util.UUID;
-
 import javax.persistence.Column;
 import javax.persistence.Entity;
+import javax.persistence.GeneratedValue;
+import javax.persistence.GenerationType;
 import javax.persistence.Id;
 import javax.persistence.Temporal;
 import javax.persistence.TemporalType;
+
+import com.google.common.collect.ImmutableMap;
+
+import fund.exception.AccountException;
+import fund.exception.AccountException.AccountExceptionType;
 
 @Entity
 public class Account {
@@ -16,7 +21,8 @@ public class Account {
 	protected Account() {}
 	
 	@Id
-	private String id;
+	@GeneratedValue(strategy = GenerationType.IDENTITY)
+	private Long id;
 	
 	@Column(unique = true)
 	private String name;
@@ -36,14 +42,13 @@ public class Account {
 	private Date updatedAt;
 	
 	private Account(String name, BigDecimal balance, long ownerId) {
-		this.id = UUID.randomUUID().toString();
 		this.name = name;
 		this.balance = balance;
 		this.ownerId = ownerId;
 		this.createdAt = new Date();
 	}
 	
-	public String id() {
+	public Long id() {
 		return id;
 	}
 
@@ -73,10 +78,13 @@ public class Account {
 	}
 	
 	public void decreaseBalance(BigDecimal amount) {
-		if(!(this.balance.compareTo(amount) == -1)) {
-			this.balance = this.balance.subtract(amount);
-			this.updatedAt = new Date();
+		if ((this.balance.compareTo(amount) == -1)) {
+			throw new AccountException(AccountExceptionType.NEGATIVE_AMOUNT_ERROR,
+					ImmutableMap.of("error message", "balance is not enough to support the transaction",
+							"current balance", this.balance, "import", amount));
 		}
+		this.balance = this.balance.subtract(amount);
+		this.updatedAt = new Date();
 	}
 	
 	public static Account of(String name, BigDecimal balance, long ownerId) {
