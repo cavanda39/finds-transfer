@@ -29,15 +29,15 @@ public class ValidationException extends BusinessException {
 	}
 	
 	public String getCode() {
-        return ((ValidationException.ValidationExceptionType)this.getType()).code;
+        return ((ValidationExceptionType)this.getType()).code;
     }
 
     public String getCategory() {
-        return ((ValidationException.ValidationExceptionType)this.getType()).category;
+        return ((ValidationExceptionType)this.getType()).category;
     }
 
     public String getMessage() {
-        return ((ValidationException.ValidationExceptionType)this.getType()).message;
+        return ((ValidationExceptionType)this.getType()).message;
     }
 
 }

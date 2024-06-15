@@ -25,9 +25,9 @@ class AccountRepositoryTest {
 	Account account = Account.of("myAccount", BigDecimal.valueOf(50.00), 1);
 	
 	@Test
-	void testExists() {
+	void testFetchByName() {
 		repo.save(account);
-		Account fetchedAccount = repo.findById(account.id()).orElseThrow(() -> new RuntimeException("account not found"));
+		Account fetchedAccount = repo.findByName("myAccount");
 		Assertions.assertTrue(fetchedAccount.balance().compareTo(BigDecimal.valueOf(50.00)) == 0);
 	}
 	

@@ -29,15 +29,15 @@ public class AccountException extends BusinessException{
 	}
 	
 	public String getCode() {
-        return ((AccountException.AccountExceptionType)this.getType()).code;
+        return ((AccountExceptionType)this.getType()).code;
     }
 
     public String getCategory() {
-        return ((AccountException.AccountExceptionType)this.getType()).category;
+        return ((AccountExceptionType)this.getType()).category;
     }
 
     public String getMessage() {
-        return ((AccountException.AccountExceptionType)this.getType()).message;
+        return ((AccountExceptionType)this.getType()).message;
     }
 
 }
