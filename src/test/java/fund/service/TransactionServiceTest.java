@@ -14,7 +14,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
-import org.springframework.web.client.HttpClientErrorException;
 
 import fund.client.ConversionError;
 import fund.client.ConversionResponse;
@@ -23,6 +22,8 @@ import fund.controller.request.TransferRequest;
 import fund.controller.response.TransactionDTO;
 import fund.domain.Account;
 import fund.domain.AccountRepository;
+import fund.domain.Transaction;
+import fund.domain.TransactionRepository;
 import fund.exception.AccountException;
 import fund.exception.ConversionException;
 import fund.util.TestUtil;
@@ -40,9 +41,13 @@ class TransactionServiceTest {
 	@Autowired
 	private AccountRepository accountRepository;
 	
+	@Autowired
+	private TransactionRepository repo;
+	
 	@BeforeEach
 	void beforeEach() {
 		accountRepository.deleteAll();
+		repo.deleteAll();
 	}
 	
 	@Test
@@ -51,15 +56,25 @@ class TransactionServiceTest {
 		accountRepository.save(TestUtil.targetEuroAccount(0));
 		TransferRequest request = new TransferRequest("source", "target", "EUR", BigDecimal.valueOf(5));
 		TransactionDTO result = service.createTransaction(request);
+		
 		assertNotNull(result.getTransactionId());
 		Account source = accountRepository.findByName("source");
 		assertEquals(source.balance().compareTo(BigDecimal.valueOf(5)), 0);
 		Account target = accountRepository.findByName("target");
 		assertEquals(target.balance().compareTo(BigDecimal.valueOf(5)), 0);
+		
+		Transaction creditTransaction = repo.findAll().stream().filter(t -> t.type().equals(Transaction.Type.CREDIT))
+				.findFirst().orElseThrow(() -> new RuntimeException("transaction not saved"));
+		assertEquals(creditTransaction.type(), Transaction.Type.CREDIT);
+		assertEquals(creditTransaction.amount().compareTo(BigDecimal.valueOf(5)), 0);
+		
+		Transaction debitransaction = repo.findById(result.getTransactionId()).orElseThrow(() -> new RuntimeException("transaction not saved"));
+		assertEquals(debitransaction.type(), Transaction.Type.DEBIT);
+		assertEquals(debitransaction.amount().compareTo(BigDecimal.valueOf(5)), 0);
 	}
 	
 	@Test
-	void testAmountNotEnought() {
+	void testAmountNotEnough() {
 		accountRepository.save(TestUtil.sourceEuroAccount(10));
 		accountRepository.save(TestUtil.targetEuroAccount(0));
 		TransferRequest request = TestUtil.euroTransfer(10.2);
@@ -76,11 +91,21 @@ class TransactionServiceTest {
 		accountRepository.save(TestUtil.targetUsdAccount(0));
 		TransferRequest request = TestUtil.euroTransfer(5);
 		TransactionDTO result = service.createTransaction(request);
+		
 		assertNotNull(result.getTransactionId());
 		Account source = accountRepository.findByName("source");
 		assertEquals(source.balance().compareTo(BigDecimal.valueOf(5)), 0);
 		Account target = accountRepository.findByName("target");
 		assertEquals(target.balance().compareTo(BigDecimal.valueOf(6.5)), 0);
+		
+		Transaction creditTransaction = repo.findAll().stream().filter(t -> t.type().equals(Transaction.Type.CREDIT))
+				.findFirst().orElseThrow(() -> new RuntimeException("transaction not saved"));
+		assertEquals(creditTransaction.type(), Transaction.Type.CREDIT);
+		assertEquals(creditTransaction.amount().compareTo(BigDecimal.valueOf(6.5)), 0);
+		
+		Transaction debitransaction = repo.findById(result.getTransactionId()).orElseThrow(() -> new RuntimeException("transaction not saved"));
+		assertEquals(debitransaction.type(), Transaction.Type.DEBIT);
+		assertEquals(debitransaction.amount().compareTo(BigDecimal.valueOf(5)), 0);
 	}
 	
 	@Test

@@ -8,7 +8,7 @@ import org.springframework.web.client.RestTemplate;
 
 @Configuration
 @EnableConfigurationProperties({ExchangeRatesApiProperties.class})
-public class FundAutoConfiguration {
+class FundAutoConfiguration {
 	
 	@Bean
 	public RestTemplate restTemplateExchangeratesapi() {
