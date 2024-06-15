@@ -5,7 +5,7 @@ import com.google.common.collect.ImmutableMap;
 import fund.exception.common.BusinessException;
 import fund.exception.common.ExceptionType;
 
-public class AccountException extends BusinessException{
+public class AccountException extends BusinessException {
 
 	private static final long serialVersionUID = 7806603299160766195L;
 

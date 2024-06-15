@@ -29,8 +29,6 @@ public class ValidatorService {
 	public void validateRequest(TransferRequest request) {
 		LOGGER.info("validate request(), [{}]", request);
 		
-		// TODO add other validator
-		
 		if(accountRepository.findByName(request.getSourceAccount()) == null) {
 			LOGGER.error("source account not found: [{}]", request.getSourceAccount());
 			throw new ValidationException(ValidationExceptionType.ACCOUNT_NOT_FOUND_ERROR,

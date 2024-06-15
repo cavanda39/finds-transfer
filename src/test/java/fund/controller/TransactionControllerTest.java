@@ -1,5 +1,7 @@
 package fund.controller;
 
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
 import java.math.BigDecimal;
 import java.util.Map;
 
@@ -19,6 +21,8 @@ import fund.domain.AccountRepository;
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 class TransactionControllerTest {
 	
+	private static final String URL = "/api/v1/transaction/send";
+	
 	@Autowired
     private TestRestTemplate template;
 	
@@ -31,9 +35,12 @@ class TransactionControllerTest {
 		repo.save(Account.of("target", BigDecimal.valueOf(100), 1));
 		TransferRequest request = new TransferRequest("account", "tatrget", null, BigDecimal.valueOf(20));
 		HttpEntity<TransferRequest> entity = new HttpEntity<TransferRequest>(request, new HttpHeaders());
-		ResponseEntity<Map> result = template.exchange("/api/v1/transaction/send", HttpMethod.POST, entity, Map.class);
-		System.out.println(result.getBody().toString());
-		// TODO add assertions
+		ResponseEntity<Map> result = template.exchange(URL, HttpMethod.POST, entity, Map.class);
+		Map<String, Object> problem = result.getBody();
+		assertTrue(problem.get("code").equals("0100/0001"));
+		assertTrue(problem.get("status").equals("BAD_REQUEST"));
+		assertTrue(problem.get("title").equals("Account not found"));
+		
 	}
 
 }
