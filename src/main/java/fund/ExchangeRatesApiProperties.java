@@ -1,11 +1,9 @@
 package fund;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
-import org.springframework.stereotype.Component;
 
-@Component
 @ConfigurationProperties(prefix = "fund.exchangeratesapi")
-public class ExchangeRatesApiProperties {
+public final class ExchangeRatesApiProperties {
 
     private String url;
     private String accessKey;

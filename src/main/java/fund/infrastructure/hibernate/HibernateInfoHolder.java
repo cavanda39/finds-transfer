@@ -4,10 +4,6 @@ import org.hibernate.boot.Metadata;
 import org.hibernate.boot.spi.MetadataImplementor;
 import org.hibernate.service.spi.SessionFactoryServiceRegistry;
 
-/**
- * @author a.polcaro
- *
- */
 final class HibernateInfoHolder {
 
 	private HibernateInfoHolder() {

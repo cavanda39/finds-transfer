@@ -18,7 +18,7 @@ import fund.exception.ConversionException;
 import fund.exception.ConversionException.ConversionExceptionType;
 
 @Component
-public class ConversionService {
+public final class ConversionService {
 
 	private static final String KEY = "access_key";
 	private static final String FROM = "from";
@@ -44,17 +44,12 @@ public class ConversionService {
 				.fromHttpUrl(properties.getUrl())
 				.queryParam(KEY, properties.getAccessKey())
 				.queryParam(FROM, sourceCurrency)
-				.queryParam(TO, targetCurrency).queryParam(AMOUNT, amount);
+				.queryParam(TO, targetCurrency)
+				.queryParam(AMOUNT, amount);
 
 		try {
 			ConversionResponse response = restTemplate.getForObject(uriBuilder.toUriString(), ConversionResponse.class);
-			if (response.getError() != null) {
-				LOGGER.error("conversion process not successful: [{}], [{}]", response.getError().getCode(),
-						response.getError().getInfo());
-				throw new ConversionException(ConversionExceptionType.CONVERSION_ERROR,
-						ImmutableMap.of("error converting currency:", sourceCurrency, "target currency", targetCurrency,
-								"error message", response.getError().getInfo()));
-			}
+			LOGGER.info("conversion successful: [{}]", response.getResult());
 			return response;
 		} catch (HttpClientErrorException e) {
 			LOGGER.error("unexpected error: [{}]", e.getMessage());

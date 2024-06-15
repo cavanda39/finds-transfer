@@ -27,10 +27,13 @@ public class Account {
 	@Column(unique = true)
 	private String name;
 	
+	@Column(nullable = false)
+	private String currency;
+	
 	@Column
 	private BigDecimal balance;
 	
-	@Column
+	@Column(nullable = false)
 	private long ownerId;
 	
 	@Column
@@ -41,8 +44,9 @@ public class Account {
 	@Temporal(TemporalType.TIMESTAMP)
 	private Date updatedAt;
 	
-	private Account(String name, BigDecimal balance, long ownerId) {
+	private Account(String name, String currency, BigDecimal balance, long ownerId) {
 		this.name = name;
+		this.currency = currency;
 		this.balance = balance;
 		this.ownerId = ownerId;
 		this.createdAt = new Date();
@@ -54,6 +58,10 @@ public class Account {
 
 	public String name() {
 		return name;
+	}
+	
+	public String currency() {
+		return currency;
 	}
 
 	public BigDecimal balance() {
@@ -87,8 +95,8 @@ public class Account {
 		this.updatedAt = new Date();
 	}
 	
-	public static Account of(String name, BigDecimal balance, long ownerId) {
-		return new Account(name, balance, ownerId);
+	public static Account of(String name, String currency, BigDecimal balance, long ownerId) {
+		return new Account(name, currency, balance, ownerId);
 	}
 
 }

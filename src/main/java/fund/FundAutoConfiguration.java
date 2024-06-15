@@ -7,7 +7,7 @@ import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
 import org.springframework.web.client.RestTemplate;
 
 @Configuration
-@EnableConfigurationProperties
+@EnableConfigurationProperties({ExchangeRatesApiProperties.class})
 public class FundAutoConfiguration {
 	
 	@Bean

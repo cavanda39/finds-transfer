@@ -14,6 +14,7 @@ import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 
 import fund.exception.AccountException;
+import fund.util.TestUtil;
 
 @ExtendWith(SpringExtension.class)
 @DataJpaTest(showSql = false)
@@ -22,12 +23,12 @@ class AccountRepositoryTest {
 	@Autowired
 	private AccountRepository repo;
 	
-	Account account = Account.of("myAccount", BigDecimal.valueOf(50.00), 1);
+	Account account = TestUtil.sourceEuroAccount(50.00);
 	
 	@Test
 	void testFetchByName() {
-		repo.save(account);
-		Account fetchedAccount = repo.findByName("myAccount");
+		repo.save(TestUtil.sourceEuroAccount(50.00));
+		Account fetchedAccount = repo.findByName("source");
 		Assertions.assertTrue(fetchedAccount.balance().compareTo(BigDecimal.valueOf(50.00)) == 0);
 	}
 	

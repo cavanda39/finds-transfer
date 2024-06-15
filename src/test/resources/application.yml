@@ -14,5 +14,5 @@ spring:
  
 fund:
   exchangeratesapi:
-    url: https://api.exchangeratesapi.io/v1/convert
+    url: https://api.Mockexchangeratesapi.io/v1/convert
     accessKey: key
