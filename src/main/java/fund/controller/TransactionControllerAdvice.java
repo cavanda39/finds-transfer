@@ -1,22 +1,20 @@
 package fund.controller;
 
-import java.net.URI;
-
-import javax.servlet.http.HttpServletRequest;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.server.ServerWebExchange;
 
 import fund.exception.AccountException;
+import fund.exception.ConversionException;
 import fund.exception.ValidationException;
 import fund.exception.common.BusinessException;
 import fund.problem.Problem;
 import fund.problem.ProblemBuilder;
-import fund.exception.ConversionException;
+import reactor.core.publisher.Mono;
 
 @RestControllerAdvice(assignableTypes = TransactionController.class)
 public final class TransactionControllerAdvice {
@@ -24,41 +22,39 @@ public final class TransactionControllerAdvice {
 	private static final Logger LOGGER = LoggerFactory.getLogger(TransactionControllerAdvice.class);
 	
 	@ExceptionHandler(ValidationException.class)
-	public ResponseEntity<Problem> on(ValidationException ex, HttpServletRequest request) {
+	public Mono<ResponseEntity<Problem>> on(ValidationException ex, ServerWebExchange exchange) {
 		LOGGER.error("ValidationException: [{}]", ex.toString());
 		String code = ex.getCategory().concat("/").concat(ex.getCode());
-		return buildProblem(code, HttpStatus.BAD_REQUEST, ex, request);
+		return buildProblem(code, HttpStatus.BAD_REQUEST, ex, exchange);
 	}
 	
 	@ExceptionHandler(AccountException.class)
-	public ResponseEntity<Problem> on(AccountException ex, HttpServletRequest request) {
+	public Mono<ResponseEntity<Problem>> on(AccountException ex, ServerWebExchange exchange) {
 		LOGGER.error("AccountException: [{}]", ex.toString());
 		String code = ex.getCategory().concat("/").concat(ex.getCode());
-		return buildProblem(code, HttpStatus.BAD_REQUEST, ex, request);
+		return buildProblem(code, HttpStatus.BAD_REQUEST, ex, exchange);
 	}
 	
 	@ExceptionHandler(ConversionException.class)
-	public ResponseEntity<Problem> on(ConversionException ex, HttpServletRequest request) {
+	public Mono<ResponseEntity<Problem>> on(ConversionException ex, ServerWebExchange exchange) {
 		LOGGER.error("ConversionException: [{}]", ex.toString());
 		String code = ex.getCategory().concat("/").concat(ex.getCode());
-		return buildProblem(code, HttpStatus.INTERNAL_SERVER_ERROR, ex, request);
+		return buildProblem(code, HttpStatus.INTERNAL_SERVER_ERROR, ex, exchange);
 	}
 	
-	private ResponseEntity<Problem> buildProblem(String code, HttpStatus status, BusinessException ex, HttpServletRequest request){
+	private Mono<ResponseEntity<Problem>> buildProblem(String code, HttpStatus status, BusinessException ex, ServerWebExchange exchange){
 		String title = ex.getMessage();
 		String detail = ex.getCause() != null ? ex.getCause().getMessage() : ex.getMessage();
 		
-		return new ProblemBuilder()
-				.with(request)
-				.with(request)
-				.withType(URI.create(request.getRequestURI()))
+		return Mono.just(new ProblemBuilder()
+				.withType(exchange.getRequest().getURI())
 				.withTitle(title)
 				.with(ex.getParams())
 				.withStatus(status)
 				.withCode(code)
 				.withDetail(detail)
 				.build()
-				.toResponseEntity();
+				.toResponseEntity());
 	}
 	
 }

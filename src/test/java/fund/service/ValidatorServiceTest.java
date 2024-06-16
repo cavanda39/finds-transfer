@@ -2,7 +2,7 @@ package fund.service;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -12,7 +12,6 @@ import org.springframework.test.context.junit.jupiter.SpringExtension;
 import fund.controller.request.TransferRequest;
 import fund.domain.AccountRepository;
 import fund.exception.ValidationException;
-import fund.service.ValidatorService;
 import fund.util.TestUtil;
 
 @ExtendWith(SpringExtension.class)
@@ -25,8 +24,8 @@ class ValidatorServiceTest {
 	@Autowired
 	private AccountRepository accountRepository;
 	
-	@AfterEach
-	void afterEach() {
+	@BeforeEach
+	void beforeEach() {
 		accountRepository.deleteAll();
 	}
 	

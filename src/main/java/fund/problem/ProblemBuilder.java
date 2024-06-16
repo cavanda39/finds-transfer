@@ -7,12 +7,9 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
-import javax.servlet.RequestDispatcher;
-import javax.servlet.http.HttpServletRequest;
-
 import org.springframework.http.HttpStatus;
+import org.springframework.http.server.reactive.ServerHttpRequest;
 
-import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 
@@ -29,18 +26,8 @@ public class ProblemBuilder {
     private String code;
     private final Map<String, String> params = new LinkedHashMap<>();
     
-    public ProblemBuilder with(HttpServletRequest req) {
-        this.type = URI.create(req.getScheme() + "://" + req.getServerName() + ":" + req.getServerPort() + req.getContextPath());
-
-        String originalUri = (String) req.getAttribute(RequestDispatcher.ERROR_REQUEST_URI);
-
-        if (originalUri != null) {
-            this.instance = originalUri;
-        } else {
-            this.instance = req.getServletPath() +
-                    (Strings.isNullOrEmpty(req.getPathInfo()) ? "" : req.getPathInfo()) +
-                    (Strings.isNullOrEmpty(req.getQueryString()) ? "" : req.getQueryString());
-        }
+    public ProblemBuilder with(ServerHttpRequest req) {
+        this.instance = req.getPath().value();
         return this;
     }
 

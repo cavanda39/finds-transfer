@@ -16,7 +16,9 @@ import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.test.web.reactive.server.WebTestClient;
 
 import fund.controller.request.TransferRequest;
 import fund.controller.response.TransactionDTO;
@@ -32,6 +34,9 @@ class TransactionControllerTest {
     private TestRestTemplate template;
 	
 	@Autowired
+    private WebTestClient webTestClient;
+	
+	@Autowired
 	private AccountRepository repo;
 	
 	@BeforeEach
@@ -44,12 +49,24 @@ class TransactionControllerTest {
 		repo.save(TestUtil.sourceEuroAccount(100));
 		repo.save(TestUtil.targetEuroAccount(0));
 		TransferRequest request = new TransferRequest("account", "idontexist", null, BigDecimal.valueOf(20));
-		HttpEntity<TransferRequest> entity = new HttpEntity<TransferRequest>(request, new HttpHeaders());
-		ResponseEntity<Map> result = template.exchange(URL, HttpMethod.POST, entity, Map.class);
-		Map<String, Object> problem = result.getBody();
-		assertTrue(problem.get("code").equals("0100/0001"));
-		assertTrue(problem.get("status").equals("BAD_REQUEST"));
-		assertTrue(problem.get("title").equals("Account not found"));
+		
+		webTestClient.post()
+		.uri(URL)
+		.contentType(MediaType.APPLICATION_JSON)
+		.bodyValue(request)
+		.exchange()
+		.expectStatus()
+		.is4xxClientError()
+		.expectHeader()
+		.contentType(MediaType.APPLICATION_PROBLEM_JSON)
+		.expectBody()
+		.jsonPath("code")
+		.isEqualTo("0100/0001")
+		.jsonPath("status")
+		.isEqualTo("BAD_REQUEST")
+		.jsonPath("title")
+		.isEqualTo("Account not found")
+		;
 	}
 	
 	@Test
@@ -57,11 +74,18 @@ class TransactionControllerTest {
 		repo.save(TestUtil.sourceEuroAccount(100));
 		repo.save(TestUtil.targetEuroAccount(0));
 		TransferRequest request = TestUtil.euroTransfer(35.765);
-		HttpEntity<TransferRequest> entity = new HttpEntity<TransferRequest>(request, new HttpHeaders());
-		ResponseEntity<TransactionDTO> result = template.exchange(URL, HttpMethod.POST, entity, TransactionDTO.class);
-		assertEquals(result.getStatusCode(), HttpStatus.OK);
-		assertNotNull(result.getBody().getTransactionId());
 		
+		webTestClient.post()
+		.uri(URL)
+		.contentType(MediaType.APPLICATION_JSON)
+		.bodyValue(request)
+		.exchange()
+		.expectStatus()
+		.is2xxSuccessful()
+		.expectBody()
+		.jsonPath("transactionId")
+		.isNotEmpty()
+		;
 	}
 	
 	@Test
@@ -69,13 +93,24 @@ class TransactionControllerTest {
 		repo.save(TestUtil.sourceEuroAccount(100));
 		repo.save(TestUtil.targetEuroAccount(0));
 		TransferRequest request = TestUtil.euroTransfer(101);
-		HttpEntity<TransferRequest> entity = new HttpEntity<TransferRequest>(request, new HttpHeaders());
-		ResponseEntity<Map> result = template.exchange(URL, HttpMethod.POST, entity, Map.class);
-		Map<String, Object> problem = result.getBody();
-		assertTrue(problem.get("code").equals("0200/0001"));
-		assertTrue(problem.get("status").equals("BAD_REQUEST"));
-		assertTrue(problem.get("title").equals("Balance is not enough"));
 		
+		webTestClient.post()
+		.uri(URL)
+		.contentType(MediaType.APPLICATION_JSON)
+		.bodyValue(request)
+		.exchange()
+		.expectStatus()
+		.is4xxClientError()
+		.expectHeader()
+		.contentType(MediaType.APPLICATION_PROBLEM_JSON)
+		.expectBody()
+		.jsonPath("code")
+		.isEqualTo("0200/0001")
+		.jsonPath("status")
+		.isEqualTo("BAD_REQUEST")
+		.jsonPath("title")
+		.isEqualTo("Balance is not enough")
+		;
 	}
 	
 }
