@@ -17,8 +17,12 @@ public class Transaction {
 	
 	protected Transaction() {}
 	
-	public static enum Type{
+	public static enum Type {
 		CREDIT, DEBIT;
+	}
+	
+	public static enum Status {
+		CREATED, FAILED, COMPLETED;
 	}
 	
 	@Id
@@ -35,8 +39,16 @@ public class Transaction {
 	private Type type;
 	
 	@Column
+	@Enumerated(EnumType.STRING)
+	private Status status;
+	
+	@Column
 	@Temporal(TemporalType.TIMESTAMP)
 	private Date createdAt;
+	
+	@Column
+	@Temporal(TemporalType.TIMESTAMP)
+	private Date updatedAt;
 	
 	@Column
 	private String parentAccount;
@@ -48,12 +60,13 @@ public class Transaction {
 		this.id = UUID.randomUUID().toString();
 		this.amount = amount;
 		this.currency = currency;
+		this.status = Status.CREATED;
 		this.type = type;
 		this.createdAt = new Date();
 		this.parentAccount = parentAccount;
 		this.externalAccount = externalAccount;
+		this.updatedAt = null;
 	}
-	
 	
 	public String id() {
 		return id;
@@ -70,9 +83,17 @@ public class Transaction {
 	public Type type() {
 		return type;
 	}
+	
+	public Status status() {
+		return status;
+	}
 
 	public Date createdAt() {
 		return createdAt;
+	}
+	
+	public Date updatedAt() {
+		return updatedAt;
 	}
 
 	public String parentAccount() {
@@ -82,6 +103,16 @@ public class Transaction {
 	public String externalAccount() {
 		return externalAccount;
 	}
+	
+	public void failed() {
+		this.status = Status.FAILED;
+		this.updatedAt = new Date();
+	}
+	
+	public void completed() {
+		this.status = Status.COMPLETED;
+		this.updatedAt = new Date();
+	}
 
 	public static Transaction creditTransaction(BigDecimal amount, String currency, String parentAccount, String externalAccount) {
 		return new Transaction(amount,currency, Type.CREDIT, parentAccount, externalAccount);
@@ -89,6 +120,13 @@ public class Transaction {
 	
 	public static Transaction debitTransaction(BigDecimal amount, String currency, String parentAccount, String externalAccount) {
 		return new Transaction(amount,currency, Type.DEBIT, parentAccount, externalAccount);
+	}
+
+	@Override
+	public String toString() {
+		return "Transaction [id=" + id + ", amount=" + amount + ", currency=" + currency + ", type=" + type
+				+ ", status=" + status + ", createdAt=" + createdAt + ", updatedAt=" + updatedAt + ", parentAccount="
+				+ parentAccount + ", externalAccount=" + externalAccount + "]";
 	}
 	
 }

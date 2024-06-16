@@ -6,8 +6,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import fund.domain.AccountRepository;
 import fund.domain.Account;
+import fund.domain.AccountRepository;
+import fund.exception.AccountException;
+import reactor.core.publisher.Mono;
 
 @Service
 @Transactional(readOnly = false)
@@ -24,18 +26,20 @@ public class AccountService {
 		return repository.findByName(accountName);
 	}
 	
-	public Account chargeAccount(String accountName, BigDecimal amount) {
+	public Mono<Account> chargeAccount(String accountName, BigDecimal amount) {
 		Account account = repository.findByName(accountName);
-		account.decreaseBalance(amount);
-		repository.save(account);
-		return account;
+		try {
+			account.decreaseBalance(amount);
+		} catch (AccountException e) {
+			return Mono.error(e);
+		}
+		return Mono.just(repository.save(account));
 	}
 	
-	public Account creditAccount(String accountName, BigDecimal amount) {
+	public Mono<Account> creditAccount(String accountName, BigDecimal amount) {
 		Account account = repository.findByName(accountName);
 		account.increaseBalance(amount);
-		repository.save(account);
-		return account;
+		return Mono.just(repository.save(account));
 	}
 	
 	

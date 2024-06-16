@@ -99,4 +99,10 @@ public class Account {
 		return new Account(name, currency, balance, ownerId);
 	}
 
+	@Override
+	public String toString() {
+		return "Account [id=" + id + ", name=" + name + ", currency=" + currency + ", balance=" + balance + ", ownerId="
+				+ ownerId + ", createdAt=" + createdAt + ", updatedAt=" + updatedAt + "]";
+	}
+	
 }

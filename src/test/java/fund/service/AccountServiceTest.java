@@ -2,7 +2,6 @@ package fund.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.math.BigDecimal;
 
@@ -16,6 +15,7 @@ import org.springframework.test.context.junit.jupiter.SpringExtension;
 import fund.domain.Account;
 import fund.domain.AccountRepository;
 import fund.exception.AccountException;
+import reactor.test.StepVerifier;
 import fund.util.TestUtil;
 
 @ExtendWith(SpringExtension.class)
@@ -38,22 +38,25 @@ public class AccountServiceTest {
 	
 	@Test
 	void testBalanceIncrease() {
-		
-		account = service.creditAccount("source", (BigDecimal.valueOf(7.034)));
-		assertEquals(account.balance(), BigDecimal.valueOf(57.034));
-		assertNotNull(account.updatedAt());
+		StepVerifier.create(service.creditAccount("source", BigDecimal.valueOf(7.034)))
+		.expectNextMatches(res -> res.balance().compareTo(BigDecimal.valueOf(57.034)) == 0)
+		.expectComplete()
+		.verify();
 	}
 	
 	@Test
 	void testBalanceDecrease() {
-		account = service.chargeAccount("source", BigDecimal.valueOf(7.034));
-		assertEquals(account.balance(), BigDecimal.valueOf(42.966));
-		assertNotNull(account.updatedAt());
+		StepVerifier.create(service.chargeAccount("source", BigDecimal.valueOf(7.034)))
+		.expectNextMatches(res -> res.balance().compareTo(BigDecimal.valueOf(42.966)) == 0)
+		.expectComplete()
+		.verify();
 	}
 	
 	@Test
 	void testBalanceDecreaseException() {
-		assertThrows(AccountException.class, () -> account = service.chargeAccount("source", BigDecimal.valueOf(50.001)));
+		StepVerifier.create(service.chargeAccount("source", BigDecimal.valueOf(50.001)))
+		.expectError(AccountException.class)
+		.verify();
 	}
 	
 }

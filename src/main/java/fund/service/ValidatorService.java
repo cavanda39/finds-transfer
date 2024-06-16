@@ -12,6 +12,7 @@ import fund.controller.request.TransferRequest;
 import fund.domain.AccountRepository;
 import fund.exception.ValidationException;
 import fund.exception.ValidationException.ValidationExceptionType;
+import reactor.core.publisher.Mono;
 
 @Service
 @Transactional(readOnly = true)
@@ -26,7 +27,7 @@ public class ValidatorService {
 		this.accountRepository = accountRepository;
 	}
 	
-	public void validateRequest(TransferRequest request) {
+	public Mono<TransferRequest> validateRequest(TransferRequest request) {
 		LOGGER.info("validate request(), [{}]", request);
 		
 		if(accountRepository.findByName(request.getSourceAccount()) == null) {
@@ -40,6 +41,8 @@ public class ValidatorService {
 			throw new ValidationException(ValidationExceptionType.ACCOUNT_NOT_FOUND_ERROR,
 					ImmutableMap.of("target account not found", request.getTargetAccount()));
 		}
+		
+		return Mono.just(request);
 	}
 
 }

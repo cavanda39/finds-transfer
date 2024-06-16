@@ -1,27 +1,14 @@
 package fund.controller;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-
 import java.math.BigDecimal;
-import java.util.Map;
-
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.web.client.TestRestTemplate;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
 import org.springframework.test.web.reactive.server.WebTestClient;
 
 import fund.controller.request.TransferRequest;
-import fund.controller.response.TransactionDTO;
 import fund.domain.AccountRepository;
 import fund.util.TestUtil;
 
@@ -29,9 +16,6 @@ import fund.util.TestUtil;
 class TransactionControllerTest {
 	
 	private static final String URL = "/api/v1/transaction/send";
-	
-	@Autowired
-    private TestRestTemplate template;
 	
 	@Autowired
     private WebTestClient webTestClient;
@@ -48,7 +32,7 @@ class TransactionControllerTest {
 	void testValidationException() {
 		repo.save(TestUtil.sourceEuroAccount(100));
 		repo.save(TestUtil.targetEuroAccount(0));
-		TransferRequest request = new TransferRequest("account", "idontexist", null, BigDecimal.valueOf(20));
+		TransferRequest request = new TransferRequest("account", "idontexist", "EUR", BigDecimal.valueOf(20));
 		
 		webTestClient.post()
 		.uri(URL)
