@@ -29,7 +29,8 @@ final class TransactionControllerImpl implements TransactionController {
 	@Override
 	public Mono<TransactionDTO> transferMoney(TransferRequest request) {
 		LOGGER.info("transaferMoney()");
-		return validatorService.validateRequest(request).flatMap(req -> service.transaferMoney(req));
+		return validatorService.validateRequest(request)
+				.then(service.transaferMoney(request));
 	}
 
 }

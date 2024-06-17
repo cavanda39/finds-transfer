@@ -45,42 +45,46 @@ private static final Logger LOGGER = LoggerFactory.getLogger(TransactionService.
 	public Mono<TransactionDTO> transaferMoney(TransferRequest request) {
 		LOGGER.info("transaferMoney: [{}]", request);
 		return just(request)
-				.subscribeOn(Schedulers.boundedElastic())
-				.flatMap(req -> just(accountService.findAccount(req.getTargetAccount())))
+				.then(accountService.findAccount(request.getTargetAccount()))
 				.flatMap(targetAccount -> convertAmount(targetAccount, request))
+				.subscribeOn(Schedulers.boundedElastic())
 				.flatMap(amount -> saveTransactions(amount, request))
-				.flatMap(transactions -> updateAccounts(transactions));
-//				.flatMap(amount -> saveDebitTransaction(amount, request))
-//				.flatMap(debitTuple -> debitAccount(debitTuple, request))
-//				.flatMap(creditTuple -> creditTransaction(creditTuple, request))
-//				.flatMap(creditTransaction -> creditAccount(creditTransaction, request));
+				.flatMap(transactions -> updateAccounts(transactions))
+				.flatMap(transactions -> completeTransactions(transactions))
+				.map(transactions -> TransactionDTO.of(transactions.getT1().id()));
 	}
 	
 	private Mono<Tuple2<Transaction, Transaction>> saveTransactions(Tuple2<BigDecimal, String> creditAmount, TransferRequest request){
-		Transaction debitTransaction = Transaction.debitTransaction(request.getAmount(), request.getCurrency(), request.getSourceAccount(), request.getTargetAccount());
-		repository.save(debitTransaction);
-		Transaction creditTransaction = Transaction.creditTransaction(creditAmount.getT1(), creditAmount.getT2(), request.getTargetAccount(), request.getSourceAccount());
-		repository.save(creditTransaction);
-		return just(of(debitTransaction, creditTransaction));
+		return Mono.zip(saveDebitTransaction(request), saveCreditTransaction(creditAmount, request));
 	}
 	
-	private Mono<TransactionDTO> updateAccounts(Tuple2<Transaction, Transaction> transactions){
+	private Mono<Tuple2<Transaction, Transaction>> completeTransactions(Tuple2<Transaction, Transaction> transactions){
+		return Mono.zip(completeTransaction(transactions.getT1()), completeTransaction(transactions.getT2()));
+	}
+	
+	private Mono<Tuple2<Transaction, Transaction>> updateAccounts(Tuple2<Transaction, Transaction> transactions) {
 		return accountService.chargeAccount(transactions.getT1().parentAccount(), transactions.getT1().amount())
-		.doOnError(error -> {
-			//TODO enhance logges
-			LOGGER.error("error charging account");
-					removeTransactions(transactions.getT1(), transactions.getT2());
-//					.flatMap(a -> removeTransaction(transactions.getT2()))		
-//					.doAfterTerminate(() -> removeTransaction(transactions.getT2()));
-		})
-		.flatMap(a -> accountService.creditAccount(transactions.getT2().parentAccount(), transactions.getT2().amount()))
-		
+				.doOnError(error -> {
+					// TODO enhance logges
+					LOGGER.error("error charging account: [{}]. Proceed to rollback transactions", error.getMessage());
+					cancelTransactions(transactions.getT1(), transactions.getT2());
+				})
+//		.then(accountService.creditAccount(transactions.getT2().parentAccount(), transactions.getT2().amount()))
+				.flatMap(account -> accountService.creditAccount(transactions.getT2().parentAccount(),
+						transactions.getT2().amount()))
+
 //		.doAfterTerminate(() -> accountService.creditAccount(transactions.getT2().parentAccount(), transactions.getT2().amount()))
-		.flatMap(a -> just(TransactionDTO.of(transactions.getT1().id())));
+				.flatMap(account -> just(transactions));
 	}
 	
-	private Mono<Void> removeTransactions(Transaction debitransaction, Transaction creditTransaction){
-		LOGGER.info("transaction failed(), [{}], [{}]", debitransaction, creditTransaction);
+	private Mono<Transaction> completeTransaction(Transaction transaction){
+		LOGGER.info("transaction completed(), [{}]", transaction);
+		transaction.completed();
+		return just(repository.save(transaction));
+	}
+	
+	private Mono<Void> cancelTransactions(Transaction debitransaction, Transaction creditTransaction){
+		LOGGER.info("transactions failed(), [{}], [{}]", debitransaction, creditTransaction);
 		debitransaction.failed();
 		creditTransaction.failed();
 		repository.save(debitransaction);
@@ -88,38 +92,21 @@ private static final Logger LOGGER = LoggerFactory.getLogger(TransactionService.
 		return Mono.empty();
 	}
 	
-	private Mono<TransactionDTO> creditAccount(Transaction creditTransaction, TransferRequest request){
-		accountService.creditAccount(request.getTargetAccount(), creditTransaction.amount());
-		return just(TransactionDTO.of(creditTransaction.id()));
-	}
-	
-	private Mono<Transaction> creditTransaction(Tuple2<Account, BigDecimal> creditTuple, TransferRequest request){
-		Transaction creditTransaction = Transaction.creditTransaction(creditTuple.getT2(), creditTuple.getT1().currency(), request.getTargetAccount(), request.getSourceAccount());
-		repository.save(creditTransaction);
-		return just(creditTransaction);
-	}
-	
-//	private Mono<Tuple2<Account, BigDecimal>> debitAccount(Tuple2<Transaction, BigDecimal> debitTuple, TransferRequest request){
-//		return accountService.chargeAccount(debitTuple.getT1().parentAccount(), request.getAmount())
-//				.doOnError(error -> {
-//					 removeTransaction(debitTuple.getT1());
-//				})
-//				.map(sourceAccount -> of(sourceAccount, debitTuple.getT2()))
-//		;
-//	}
-	
-	private Mono<Tuple2<Transaction, BigDecimal>> saveDebitTransaction(Tuple2<BigDecimal, String> amount, TransferRequest request){
+	private  Mono<Transaction> saveDebitTransaction(TransferRequest request){
 		Transaction debitTransaction = Transaction.debitTransaction(request.getAmount(), request.getCurrency(), request.getSourceAccount(), request.getTargetAccount());
-		repository.save(debitTransaction);
-		return just(of(debitTransaction, amount.getT1()));
+		return just(repository.save(debitTransaction));
+	}
+	
+	private Mono<Transaction> saveCreditTransaction(Tuple2<BigDecimal, String> creditAmount, TransferRequest request){
+		Transaction creditTransaction = Transaction.creditTransaction(creditAmount.getT1(), creditAmount.getT2(), request.getTargetAccount(), request.getSourceAccount());
+		return just(repository.save(creditTransaction));
 	}
 	
 	private Mono<Tuple2<BigDecimal, String>> convertAmount(Account targetAccount, TransferRequest request) {
 		if (!targetAccount.currency().equalsIgnoreCase(request.getCurrency())) {
-			// result handled here because in future we might perform different action (e.g. fetch exchange rate from different service)
-			return conversionService
-					.convertCurrency(request.getCurrency(), targetAccount.currency(), request.getAmount())
+			return conversionService.convertCurrency(request.getCurrency(), targetAccount.currency(), request.getAmount())
 					.flatMap(conversionResult -> {
+						// result handled here because in future we might perform different action (e.g. fetch exchange rate from different service)
 						if (conversionResult.getError() != null) {
 							LOGGER.error("conversion process not successful: [{}], [{}]",
 									conversionResult.getError().getCode(), conversionResult.getError().getInfo());
@@ -128,17 +115,13 @@ private static final Logger LOGGER = LoggerFactory.getLogger(TransactionService.
 											"target currency", targetAccount.currency(), "error message",
 											conversionResult.getError().getInfo())));
 						}
+						LOGGER.info("exchange rate: [{}]", conversionResult.getResult());
 						BigDecimal exchangeRate = BigDecimal.valueOf(conversionResult.getResult());
 						return just(of(exchangeRate.multiply(request.getAmount()), targetAccount.currency()));
 					});
 		} else {
 			return just(of(request.getAmount(), request.getCurrency()));
 		}
-	}
-	
-	public Mono<Transaction> saveDebitTransaction(TransferRequest request){
-		Transaction debitTransaction = Transaction.debitTransaction(request.getAmount(), request.getCurrency(), request.getSourceAccount(), request.getTargetAccount());
-		return just(repository.save(debitTransaction));
 	}
 	
 }

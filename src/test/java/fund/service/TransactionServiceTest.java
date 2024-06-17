@@ -5,6 +5,12 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -15,7 +21,6 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 
-import fund.client.ConversionError;
 import fund.client.ConversionResponse;
 import fund.client.ConversionService;
 import fund.controller.request.TransferRequest;
@@ -28,7 +33,6 @@ import fund.exception.AccountException;
 import fund.exception.ConversionException;
 import fund.util.TestUtil;
 import reactor.core.publisher.Mono;
-import reactor.test.StepVerifier;
 
 @ExtendWith(SpringExtension.class)
 @SpringBootTest
@@ -53,31 +57,14 @@ class TransactionServiceTest {
 	}
 	
 	@Test
-	void testOkNoConversion() {
+	void testOkNoConversion() throws AssertionError, InterruptedException, ExecutionException {
 		Mockito.reset(conversionService);
+		
 		accountRepository.save(TestUtil.sourceEuroAccount(10));
 		accountRepository.save(TestUtil.targetEuroAccount(0));
 		TransferRequest request = new TransferRequest("source", "target", "EUR", BigDecimal.valueOf(5));
 		
-		StepVerifier.create(service.transaferMoney(request))
-		.expectNextMatches(res -> res.getTransactionId() != null)
-		.expectComplete()
-		.verify();
-		
-//		repo.findAll().forEach(a -> {
-//			System.out.println(a.amount());
-//		});
-		
-//		List<Transaction> transactions = repo.findAll();
-//		assertEquals(2, transactions.size());
-		
-//		Transaction creditTransaction = transactions.stream().filter(t -> t.type().equals(Transaction.Type.CREDIT))
-//				.findFirst().orElseThrow(() -> new RuntimeException("transaction not saved"));
-//		assertEquals(creditTransaction.amount().compareTo(BigDecimal.valueOf(5)), 0);
-//		
-//		Transaction debitTransaction = transactions.stream().filter(t -> t.type().equals(Transaction.Type.DEBIT))
-//				.findFirst().orElseThrow(() -> new RuntimeException("transaction not saved"));
-//		assertEquals(debitTransaction.amount().compareTo(BigDecimal.valueOf(5)), 0);
+		TestUtil.assertTransferMoneyOk(service.transaferMoney(request));
 		
 		Account source = accountRepository.findByName("source");
 		assertEquals(source.balance().compareTo(BigDecimal.valueOf(5)), 0);
@@ -86,28 +73,110 @@ class TransactionServiceTest {
 		
 		List<Transaction> transactions = repo.findAll();
 		assertEquals(2, transactions.size());
-		assertEquals(transactions.get(0).status(), Transaction.Status.CREATED);
-		assertEquals(transactions.get(1).status(), Transaction.Status.CREATED);
-//		
-		Transaction creditTransaction = transactions.stream().filter(t -> t.type().equals(Transaction.Type.CREDIT))
-				.findFirst().orElseThrow(() -> new RuntimeException("transaction not saved"));
-		assertEquals(creditTransaction.amount().compareTo(BigDecimal.valueOf(5)), 0);
 		
-		Transaction debitTransaction = transactions.stream().filter(t -> t.type().equals(Transaction.Type.DEBIT))
-				.findFirst().orElseThrow(() -> new RuntimeException("transaction not saved"));
-		assertEquals(debitTransaction.amount().compareTo(BigDecimal.valueOf(5)), 0);
+		transactions.stream().filter(t -> t.type().equals(Transaction.Type.CREDIT)).forEach(t -> {
+			assertEquals(t.amount().compareTo(BigDecimal.valueOf(5)), 0);
+			assertEquals(t.status(), Transaction.Status.COMPLETED);
+		});
+		transactions.stream().filter(t -> t.type().equals(Transaction.Type.DEBIT)).forEach(t -> {
+			assertEquals(t.amount().compareTo(BigDecimal.valueOf(5)), 0);
+			assertEquals(t.status(), Transaction.Status.COMPLETED);
+		});
+	}
+	
+	@Test
+	void testOkNoConversionConcurrency() throws Exception{
+		Mockito.reset(conversionService);
+		
+		accountRepository.save(TestUtil.sourceEuroAccount(10));
+		accountRepository.save(TestUtil.targetEuroAccount(0));
+		TransferRequest request = new TransferRequest("source", "target", "EUR", BigDecimal.valueOf(3));
+		
+		ExecutorService executorService = Executors.newFixedThreadPool(3);
+        Callable<Mono<TransactionDTO>> task = () -> service.transaferMoney(request);
+        
+        Future<Mono<TransactionDTO>> future1 = executorService.submit(task);
+        Future<Mono<TransactionDTO>> future2 = executorService.submit(task);
+        Future<Mono<TransactionDTO>> future3 = executorService.submit(task);
+        
+        TestUtil.assertTransferMoneyOk(future1.get());
+        TestUtil.assertTransferMoneyOk(future2.get());
+        TestUtil.assertTransferMoneyOk(future3.get());
+        
+        executorService.shutdown();
+        executorService.awaitTermination(1, TimeUnit.NANOSECONDS);
+		
+		Account source = accountRepository.findByName("source");
+		assertEquals(source.balance().compareTo(BigDecimal.valueOf(1)), 0);
+		Account target = accountRepository.findByName("target");
+		assertEquals(target.balance().compareTo(BigDecimal.valueOf(9)), 0);
+		
+		List<Transaction> transactions = repo.findAll();
+		assertEquals(6, transactions.size());
+		assertEquals(3, transactions.stream().filter(t -> t.type().equals(Transaction.Type.CREDIT)).count());
+		assertEquals(3, transactions.stream().filter(t -> t.type().equals(Transaction.Type.DEBIT)).count());
+		
+		transactions.stream().filter(t -> t.type().equals(Transaction.Type.CREDIT)).forEach(t -> {
+			assertEquals(t.amount().compareTo(BigDecimal.valueOf(3)), 0);
+			assertEquals(t.status(), Transaction.Status.COMPLETED);
+		});
+		transactions.stream().filter(t -> t.type().equals(Transaction.Type.DEBIT)).forEach(t -> {
+			assertEquals(t.amount().compareTo(BigDecimal.valueOf(3)), 0);
+			assertEquals(t.status(), Transaction.Status.COMPLETED);
+		});
+	}
+	
+	@Test
+	void testAmountNotEnoughConcurrency() throws Exception {
+		Mockito.reset(conversionService);
+		
+		accountRepository.save(TestUtil.sourceEuroAccount(10));
+		accountRepository.save(TestUtil.targetEuroAccount(0));
+		TransferRequest request = new TransferRequest("source", "target", "EUR", BigDecimal.valueOf(3.75));
+		
+		ExecutorService executorService = Executors.newFixedThreadPool(3);
+        Callable<Mono<TransactionDTO>> task = () -> service.transaferMoney(request);
+        
+        Future<Mono<TransactionDTO>> future1 = executorService.submit(task);
+        Future<Mono<TransactionDTO>> future2 = executorService.submit(task);
+        Future<Mono<TransactionDTO>> future3 = executorService.submit(task);
+        
+        TestUtil.assertTransferMoneyOk(future1.get());
+        TestUtil.assertTransferMoneyOk(future2.get());
+        TestUtil.assertTransferMoneyError(future3.get(), AccountException.class);
+       
+        executorService.shutdown();
+        executorService.awaitTermination(1, TimeUnit.NANOSECONDS);
+		
+		Account source = accountRepository.findByName("source");
+		assertEquals(source.balance().compareTo(BigDecimal.valueOf(2.5)), 0);
+		Account target = accountRepository.findByName("target");
+		assertEquals(target.balance().compareTo(BigDecimal.valueOf(7.5)), 0);
+		
+		List<Transaction> transactions = repo.findAll();
+		assertEquals(6, transactions.size());
+		assertEquals(3, transactions.stream().filter(t -> t.type().equals(Transaction.Type.CREDIT)).count());
+		assertEquals(3, transactions.stream().filter(t -> t.type().equals(Transaction.Type.DEBIT)).count());
+		assertEquals(4, transactions.stream().filter(t -> t.status().equals(Transaction.Status.COMPLETED)).count());
+		assertEquals(2, transactions.stream().filter(t -> t.status().equals(Transaction.Status.FAILED)).count());
+		
+		transactions.stream().filter(t -> t.type().equals(Transaction.Type.CREDIT)).forEach(t -> {
+			assertEquals(t.amount().compareTo(BigDecimal.valueOf(3.75)), 0);
+		});
+		transactions.stream().filter(t -> t.type().equals(Transaction.Type.DEBIT)).forEach(t -> {
+			assertEquals(t.amount().compareTo(BigDecimal.valueOf(3.75)), 0);
+		});
 	}
 	
 	@Test
 	void testAmountNotEnough() {
 		Mockito.reset(conversionService);
+		
 		accountRepository.save(TestUtil.sourceEuroAccount(10));
 		accountRepository.save(TestUtil.targetEuroAccount(0));
 		TransferRequest request = TestUtil.euroTransfer(10.2);
 		
-		StepVerifier.create(service.transaferMoney(request))
-		.expectError(AccountException.class)
-		.verify();
+		TestUtil.assertTransferMoneyError(service.transaferMoney(request), AccountException.class);
 		
 		List<Transaction> transactions = repo.findAll();
 		assertEquals(transactions.size(), 2);
@@ -124,17 +193,14 @@ class TransactionServiceTest {
 	@Test
 	void testOkConversion(){
 		Mockito.reset(conversionService);
-		ConversionResponse response = new ConversionResponse();
-		response.setResult(1.3);
+		
+		ConversionResponse response = TestUtil.responseOk(1.3);
 		Mockito.when(conversionService.convertCurrency(Mockito.any(), Mockito.any(), Mockito.any())).thenReturn(Mono.just(response));
 		accountRepository.save(TestUtil.sourceEuroAccount(10));
 		accountRepository.save(TestUtil.targetUsdAccount(0));
 		TransferRequest request = TestUtil.euroTransfer(5);
 		
-		StepVerifier.create(service.transaferMoney(request))
-		.expectNextMatches(res -> res.getTransactionId() != null)
-		.expectComplete()
-		.verify();
+		TestUtil.assertTransferMoneyOk(service.transaferMoney(request));
 		
 		Account source = accountRepository.findByName("source");
 		assertEquals(source.balance().compareTo(BigDecimal.valueOf(5)), 0);
@@ -143,6 +209,8 @@ class TransactionServiceTest {
 		
 		List<Transaction> transactions = repo.findAll();
 		assertEquals(2, transactions.size());
+		assertEquals(transactions.get(0).status(), Transaction.Status.COMPLETED);
+		assertEquals(transactions.get(1).status(), Transaction.Status.COMPLETED);
 		
 		Transaction creditTransaction = transactions.stream().filter(t -> t.type().equals(Transaction.Type.CREDIT))
 				.findFirst().orElseThrow(() -> new RuntimeException("transaction not saved"));
@@ -156,19 +224,15 @@ class TransactionServiceTest {
 	@Test
 	void testConversionNotAvailable(){
 		Mockito.reset(conversionService);
-		ConversionResponse response = new ConversionResponse();
-		ConversionError error = new ConversionError();
-		error.setCode(503);
-		error.setInfo("service not available");
-		response.setError(error);
+
+		ConversionResponse response = TestUtil.responseGatewayError();
 		Mockito.when(conversionService.convertCurrency(Mockito.any(), Mockito.any(), Mockito.any())).thenReturn(Mono.just(response));
+		
 		accountRepository.save(TestUtil.sourceEuroAccount(10));
 		accountRepository.save(TestUtil.targetUsdAccount(0));
 		TransferRequest request = TestUtil.euroTransfer(5);
 		
-		StepVerifier.create(service.transaferMoney(request))
-		.expectError(ConversionException.class)
-		.verify();
+		TestUtil.assertTransferMoneyError(service.transaferMoney(request), ConversionException.class);
 		
 		Account source = accountRepository.findByName("source");
 		assertEquals(source.balance().compareTo(BigDecimal.valueOf(10)), 0);

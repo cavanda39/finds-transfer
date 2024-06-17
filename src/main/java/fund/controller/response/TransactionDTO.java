@@ -3,7 +3,7 @@ package fund.controller.response;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
-public class TransactionDTO {
+public final class TransactionDTO {
 	
 	private String transactionId;
 	

@@ -27,7 +27,7 @@ public class ValidatorService {
 		this.accountRepository = accountRepository;
 	}
 	
-	public Mono<TransferRequest> validateRequest(TransferRequest request) {
+	public Mono<Void> validateRequest(TransferRequest request) {
 		LOGGER.info("validate request(), [{}]", request);
 		
 		if(accountRepository.findByName(request.getSourceAccount()) == null) {
@@ -42,7 +42,7 @@ public class ValidatorService {
 					ImmutableMap.of("target account not found", request.getTargetAccount()));
 		}
 		
-		return Mono.just(request);
+		return Mono.empty();
 	}
 
 }

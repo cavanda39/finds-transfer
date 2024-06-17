@@ -1,6 +1,6 @@
 package fund.client;
 
-public class ConversionError {
+public final class ConversionError {
 	
 	private Integer code;
     private String info;

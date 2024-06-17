@@ -48,43 +48,11 @@ public final class ConversionService {
 							.build())
 					.retrieve()
 					.onStatus(status -> !(status.is2xxSuccessful()),
-							getClientResponseMonoFunction(sourceCurrency, targetCurrency))
+							clientErrorMonoFunction(sourceCurrency, targetCurrency))
 					.bodyToMono(ConversionResponse.class);
-//					.flatMap(response -> {
-//						if(response.getError() != null) {
-//							LOGGER.error("conversion process not successful: [{}], [{}]", response.getError().getCode(),
-//									response.getError().getInfo());
-//							return Mono.error(() -> 
-//							new ConversionException(ConversionExceptionType.CONVERSION_ERROR,
-//									ImmutableMap.of("error converting currency:", sourceCurrency, "target currency",
-//									targetCurrency, "error message", response.getError().getInfo()))
-//									);
-//						}
-//						return Mono.just(BigDecimal.valueOf(response.getResult()));
-//					});
-					
-		
-
-//		UriComponentsBuilder uriBuilder = UriComponentsBuilder
-//				.fromHttpUrl(properties.getUrl())
-//				.queryParam(KEY, properties.getAccessKey())
-//				.queryParam(FROM, sourceCurrency)
-//				.queryParam(TO, targetCurrency)
-//				.queryParam(AMOUNT, amount);
-//
-//		try {
-//			ConversionResponse response = restTemplate.getForObject(uriBuilder.toUriString(), ConversionResponse.class);
-//			LOGGER.info("conversion successful: [{}]", response.getResult());
-//			return response;
-//		} catch (HttpClientErrorException e) {
-//			LOGGER.error("unexpected error: [{}]", e.getMessage());
-//			throw new ConversionException(ConversionExceptionType.CONVERSION_ERROR,
-//					ImmutableMap.of("error converting currency:", sourceCurrency, "target currency", targetCurrency),
-//					e);
-//		}
 	}
 	
-	private Function<ClientResponse, Mono<? extends Throwable>> getClientResponseMonoFunction(String sourceCurrency, String targetCurrency) {
+	private Function<ClientResponse, Mono<? extends Throwable>> clientErrorMonoFunction(String sourceCurrency, String targetCurrency) {
         return (ClientResponse clientResponse) -> {
         	return clientResponse.bodyToMono(String.class)
         			.flatMap(body -> {

@@ -3,7 +3,7 @@ package fund.client;
 import com.fasterxml.jackson.annotation.JsonInclude;
 
 @JsonInclude(JsonInclude.Include.NON_NULL)
-public class ConversionResponse {
+public final class ConversionResponse {
 	
 	private ConversionError error;
 	private double result;

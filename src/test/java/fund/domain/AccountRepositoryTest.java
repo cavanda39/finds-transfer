@@ -9,7 +9,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 
-import fund.exception.AccountException;
 import fund.util.TestUtil;
 
 @ExtendWith(SpringExtension.class)
@@ -18,8 +17,6 @@ class AccountRepositoryTest {
 	
 	@Autowired
 	private AccountRepository repo;
-	
-	Account account = TestUtil.sourceEuroAccount(50.00);
 	
 	@Test
 	void testFetchByName() {

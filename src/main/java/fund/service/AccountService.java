@@ -2,6 +2,8 @@ package fund.service;
 
 import java.math.BigDecimal;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -15,6 +17,8 @@ import reactor.core.publisher.Mono;
 @Transactional(readOnly = false)
 public class AccountService {
 	
+	public static final Logger LOGGER = LoggerFactory.getLogger(AccountService.class);
+	
 	private final AccountRepository repository;
 	
 	@Autowired
@@ -22,8 +26,8 @@ public class AccountService {
 		this.repository = repository;
 	}
 	
-	public Account findAccount(String accountName) {
-		return repository.findByName(accountName);
+	public Mono<Account> findAccount(String accountName) {
+		return Mono.just(repository.findByName(accountName));
 	}
 	
 	public Mono<Account> chargeAccount(String accountName, BigDecimal amount) {
@@ -31,6 +35,7 @@ public class AccountService {
 		try {
 			account.decreaseBalance(amount);
 		} catch (AccountException e) {
+			LOGGER.error("error charging account: [{}]", account.name());
 			return Mono.error(e);
 		}
 		return Mono.just(repository.save(account));

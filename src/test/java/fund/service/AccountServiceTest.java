@@ -1,8 +1,5 @@
 package fund.service;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-
 import java.math.BigDecimal;
 
 import org.junit.jupiter.api.BeforeEach;
