@@ -45,12 +45,19 @@ private static final Logger LOGGER = LoggerFactory.getLogger(TransactionService.
 	public Mono<TransactionDTO> transaferMoney(TransferRequest request) {
 		LOGGER.info("transaferMoney: [{}]", request);
 		return just(request)
+				// fetch target account to extract currency
 				.then(accountService.findAccount(request.getTargetAccount()))
+				// call convert service for exchange rate
 				.flatMap(targetAccount -> convertAmount(targetAccount, request))
+				// concurrency
 				.subscribeOn(Schedulers.boundedElastic())
+				// create transactions
 				.flatMap(amount -> saveTransactions(amount, request))
+				// charge and debit the accounts
 				.flatMap(transactions -> updateAccounts(transactions))
+				// set transactions to complete
 				.flatMap(transactions -> completeTransactions(transactions))
+				// return debit transaction identifier
 				.map(transactions -> TransactionDTO.of(transactions.getT1().id()));
 	}
 	
@@ -63,18 +70,16 @@ private static final Logger LOGGER = LoggerFactory.getLogger(TransactionService.
 	}
 	
 	private Mono<Tuple2<Transaction, Transaction>> updateAccounts(Tuple2<Transaction, Transaction> transactions) {
+		// rollback only on the transactions because the only exception expected comes from chargeAccount method
 		return accountService.chargeAccount(transactions.getT1().parentAccount(), transactions.getT1().amount())
-				.doOnError(error -> {
-					// TODO enhance logges
-					LOGGER.error("error charging account: [{}]. Proceed to rollback transactions", error.getMessage());
-					cancelTransactions(transactions.getT1(), transactions.getT2());
-				})
-//		.then(accountService.creditAccount(transactions.getT2().parentAccount(), transactions.getT2().amount()))
 				.flatMap(account -> accountService.creditAccount(transactions.getT2().parentAccount(),
 						transactions.getT2().amount()))
 
-//		.doAfterTerminate(() -> accountService.creditAccount(transactions.getT2().parentAccount(), transactions.getT2().amount()))
-				.flatMap(account -> just(transactions));
+				.map(account -> transactions)
+				.doOnError(error -> {
+					LOGGER.error("error charging account: [{}]. Proceed to rollback transactions", error.getMessage());
+					cancelTransactions(transactions.getT1(), transactions.getT2());
+				});
 	}
 	
 	private Mono<Transaction> completeTransaction(Transaction transaction){
@@ -92,7 +97,7 @@ private static final Logger LOGGER = LoggerFactory.getLogger(TransactionService.
 		return Mono.empty();
 	}
 	
-	private  Mono<Transaction> saveDebitTransaction(TransferRequest request){
+	private Mono<Transaction> saveDebitTransaction(TransferRequest request){
 		Transaction debitTransaction = Transaction.debitTransaction(request.getAmount(), request.getCurrency(), request.getSourceAccount(), request.getTargetAccount());
 		return just(repository.save(debitTransaction));
 	}

@@ -86,7 +86,7 @@ public class Account {
 	
 	public void decreaseBalance(BigDecimal amount) {
 		if ((this.balance.compareTo(amount) == -1)) {
-			// TODO check if exception here is ok
+			// we do not call Mono.error() because this method might be use by non reactive service (e.g. admin service)
 			throw new AccountException(AccountExceptionType.NEGATIVE_AMOUNT_ERROR,
 					ImmutableMap.of("error message", "balance is not enough to support the transaction",
 							"current balance", this.balance, "import", amount));

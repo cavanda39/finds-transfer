@@ -27,6 +27,7 @@ public class ValidatorService {
 		this.accountRepository = accountRepository;
 	}
 	
+	// we consider amount and currency already validated by front end 
 	public Mono<Void> validateRequest(TransferRequest request) {
 		LOGGER.info("validate request(), [{}]", request);
 		

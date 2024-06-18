@@ -19,18 +19,6 @@ public class BusinessException extends RuntimeException {
 		this.params = params;
 	}
 	
-	public BusinessException(ExceptionType type, ImmutableMap<String, Object> params, Throwable cause) {
-		super(build(type, "", params, cause), cause);
-		this.type = type;
-		this.params = params;
-	}
-	
-	public BusinessException(String message, ImmutableMap<String, Object> params) {
-		super(build(message, params));
-		this.params = params;
-		this.type = null;
-	}
-	
 	public ExceptionType getType() {
 		return this.type;
 	}
@@ -52,13 +40,6 @@ public class BusinessException extends RuntimeException {
 			builder.append(" cause=[").append(cause.getMessage()).append(']');
 		}
 
-		return builder.toString();
-	}
-	
-	private static String build(String message, Map<String, Object> params) {
-		StringBuilder builder = new StringBuilder(256);
-		builder.append("message=[").append(message).append(']');
-		params.forEach(paramsConsumer(builder));
 		return builder.toString();
 	}
 	

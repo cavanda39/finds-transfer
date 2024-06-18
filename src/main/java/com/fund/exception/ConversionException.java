@@ -1,6 +1,5 @@
 package com.fund.exception;
 
-import com.fund.exception.ValidationException.ValidationExceptionType;
 import com.fund.exception.common.BusinessException;
 import com.fund.exception.common.ExceptionType;
 import com.google.common.collect.ImmutableMap;
@@ -22,10 +21,6 @@ public class ConversionException extends BusinessException {
 			this.category = category;
 			this.message = message;
 		}
-	}
-
-	public ConversionException(ExceptionType type, ImmutableMap<String, Object> params, Throwable cause) {
-		super(type, params, cause);
 	}
 
 	public ConversionException(ExceptionType type, ImmutableMap<String, Object> params) {

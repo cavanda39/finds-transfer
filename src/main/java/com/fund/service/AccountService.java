@@ -35,6 +35,7 @@ public class AccountService {
 		Account account = repository.findByName(accountName);
 		try {
 			account.decreaseBalance(amount);
+			// for reactive exception handling
 		} catch (AccountException e) {
 			LOGGER.error("error charging account: [{}]", account.name());
 			return Mono.error(e);
