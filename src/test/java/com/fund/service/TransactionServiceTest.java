@@ -198,6 +198,7 @@ class TransactionServiceTest {
 		
 		ConversionResponse response = TestUtil.responseOk(1.3);
 		Mockito.when(conversionService.convertCurrency(Mockito.any(), Mockito.any(), Mockito.any())).thenReturn(Mono.just(response));
+		
 		accountRepository.save(TestUtil.sourceEuroAccount(10));
 		accountRepository.save(TestUtil.targetUsdAccount(0));
 		TransferRequest request = TestUtil.euroTransfer(5);
